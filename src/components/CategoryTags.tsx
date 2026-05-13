@@ -30,7 +30,7 @@ export const CategoryTags: React.FC<CategoryProps> = ({ data }) => {
           // ✅ Added a fallback image in case item.url is broken or null
           source={{ uri: item.url || 'https://via.placeholder.com/100' }}
           style={styles.circleImage}
-          resizeMode="cover"
+          resizeMode="contain"
         />
       </View>
       <Text style={styles.title} numberOfLines={1}>
