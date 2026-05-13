@@ -1,36 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   ActivityIndicator,
   StyleSheet,
-  ScrollView,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
+
 import ProductCard from '../components/productcard';
 import { Product } from '../types/product';
 import { fetchProducts } from '../repositories/ProductRepository';
-import { initialWindowSafeAreaInsets } from 'react-native-safe-area-context';
 
-function HomeScreen() {
+import { Banner } from '../types/banner';
+import { fetchBanners } from '../repositories/BannerRepository';
+import { BannerSlider } from '../components/BannerSlider';
+
+import { Categories as CategoryType } from '../types/categories';
+import { fetchCategories } from '../repositories/CategoryRepository';
+
+// ✅ Make sure this import is correct
+import { CategoryTags } from '../components/CategoryTags';
+
+function HomeScreen({ navigation }: any) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
+
   const screenWidth = Dimensions.get('window').width;
+
   useEffect(() => {
-    loadProducts();
+    loadAllData();
   }, []);
 
-  async function loadProducts() {
+  async function loadAllData() {
     try {
-      const data = await fetchProducts();
-      setProducts(data);
+      const [productsData, bannersData, categoriesData] = await Promise.all([
+        fetchProducts(),
+        fetchBanners(),
+        fetchCategories(),
+      ]);
+
+      setProducts(productsData);
+      setBanners(bannersData);
+      setCategories(categoriesData);
     } catch (error) {
-      console.log(error);
+      console.log('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   }
+
+  const renderHeader = useCallback(() => (
+    <View style={{ flex: 0 }}>
+      <CategoryTags data={categories} />
+      <BannerSlider data={banners} />
+
+      <Text style={styles.title}>Featured Products</Text>
+    </View>
+  ), [categories, banners]); // Only re-calculate if these change
 
   if (loading) {
     return (
@@ -41,33 +72,24 @@ function HomeScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* You can add Header, Search, Category chips here later */}
-      <View style={styles.outerContainer}>
-        <Text style ={styles.title}> Featured Products</Text>
-<FlatList
+    <View style={styles.container}>
+      <FlatList
         data={products}
-        keyExtractor={item => item.id.toString()}
+        keyExtractor={(item) => item.id.toString()}
         numColumns={2}
-        columnWrapperStyle={{
-          justifyContent: 'space-between',
-          paddingHorizontal: 8,
-        }}
-        renderItem={({ item, index }) => (
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={styles.columnWrapper}
+        renderItem={({ item }) => (
           <ProductCard
             product={item}
-            width={screenWidth / 2 - 12} // ← Pass dynamic width
-            onPress={product =>
-              navigation.navigate('ProductDetail', { product })
-            }
-            onQuickBuy={product => console.log('Quick buy:', product.title)}
-            onImageError={err => console.log(err)}
+            width={screenWidth / 2 - 16}
+            onPress={(product) => navigation.navigate('ProductDetail', { product })}
+            onQuickBuy={(product) => console.log('Quick buy:', product.title)}
           />
         )}
       />
-      </View>
-      
-    </ScrollView>
+    </View>
   );
 }
 
@@ -75,31 +97,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
-  },
-outerContainer: {
-    paddingBottom: 20,
-    marginBottom: 20,
-    paddingHorizontal: 8, // Added padding to the container
+    // Adds padding on Android only to account for the status bar
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: '#1a1a1a',
-    marginBottom: 16, // This creates the gap between title and products
-    marginTop: 10,
-    paddingHorizontal: 8,
+    marginVertical: 16,
+    paddingHorizontal: 16,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  row: {
+  listContent: { paddingBottom: 20 },
+  columnWrapper: {
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-  },
-  listContent: {
-    paddingBottom: 20,
+    paddingHorizontal: 8,
   },
 });
 

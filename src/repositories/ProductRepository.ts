@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Product } from "../types/product";
 
-interface ProductResponse {
+interface ProductResponse {j
     products: Product[];
 
 }
